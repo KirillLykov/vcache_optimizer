@@ -344,6 +344,9 @@ public:
 				for (int i = 0; i < 3; ++i)
 					tri.indices[i] = permutation[tri.indices[i]].second;
 			}
+
+	    // Added by Kirill
+	    vcache_mesh.custom_operation(permutation);
 		}
 
 		// finally, store the contents of optimized_tris in the mesh
