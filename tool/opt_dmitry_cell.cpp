@@ -3,10 +3,50 @@
 #include <fstream>
 #include <array>
 #include <iomanip>
-//#include  <initializer_list>
 #include <vcache_optimizer/vcache_optimizer.hpp>
 #include <vcache_optimizer/stdout_callback.hpp>
 
+// Code to check that the output mesh is better than the input
+namespace checkquality
+{
+inline void scale3(float s, float *v)
+{
+  v[0] *= s;
+  v[1] *= s;
+  v[2] *= s;
+}
+
+inline void add3(const float *v1, const float *v2, float *ans)
+{
+  ans[0] = v1[0] + v2[0];
+  ans[1] = v1[1] + v2[1];
+  ans[2] = v1[2] + v2[2];
+}
+
+inline void sub3(const float *v1, const float *v2, float *ans)
+{
+  ans[0] = v1[0] - v2[0];
+  ans[1] = v1[1] - v2[1];
+  ans[2] = v1[2] - v2[2];
+}
+
+inline float len3(const float *v)
+{
+  return sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+}
+
+inline float dot3(const float *v1, const float *v2)
+{
+  return v1[0]*v2[0]+v1[1]*v2[1]+v1[2]*v2[2];
+}
+
+inline void cross3(const float *v1, const float *v2, float *ans)
+{
+  ans[0] = v1[1]*v2[2] - v1[2]*v2[1];
+  ans[1] = v1[2]*v2[0] - v1[0]*v2[2];
+  ans[2] = v1[0]*v2[1] - v1[1]*v2[0];
+}
+}
 
 struct mytriangle
 {
@@ -34,7 +74,6 @@ struct myvtx
 
 	myvtx() {}
 	myvtx(float value[3]): value{value[0], value[1], value[2]} {}
-	//myvtx(std::initializer_list<float> lazy): value{lazy[0], lazy[1], lazy[2]} {}
 };
 
 
@@ -67,6 +106,48 @@ struct mymesh
     }
 	}
 };
+
+namespace checkquality
+{
+  double computeAvgDistVert(const mymesh::vertices_t& vertices)
+  {
+    double length = 0.0f;
+    for (auto it = vertices.begin(); it != vertices.end() - 1; ++it)
+    {
+      float buf[3] = {0,0,0};
+      sub3(it->value, (it + 1)->value, buf);
+      length += len3(buf);
+    }
+    return length / vertices.size();
+  }
+
+  double computeAvgDistTriangles(const mymesh::vertices_t& vertices, const mymesh::triangles_t& triangles)
+  {
+    double length = 0.0f;
+    float prevCM[3] = {0.0,0.0,0.0};
+    for (auto it = triangles.begin(); it != triangles.end() - 1; ++it)
+    {
+      float buf[3] = {0,0,0};
+      for (int i = 0; i < 3; ++i) {
+        int next = (i + 1)%3;
+        add3(vertices[it->indices[i]].value, vertices[it->indices[next]].value, buf);
+      }
+      scale3(1.0/3.0, buf);
+
+      float buf2[3] = {0,0,0};
+      sub3(buf, prevCM, buf2);
+      prevCM[0] = buf[0]; prevCM[1] = buf[1]; prevCM[2] = buf[2];
+      length += len3(buf2);
+    }
+    return length / triangles.size();
+  }
+
+  void printQuality(const mymesh& mesh)
+  {
+    std::cout << "Average length between particles: "  << computeAvgDistVert(mesh.vertices) << std::endl;
+    std::cout << "Average length between triangles: "  << computeAvgDistTriangles(mesh.vertices, mesh.triangles) << std::endl;
+  }
+}
 
 
 namespace vcache_optimizer
@@ -255,11 +336,13 @@ int main(int argc, char* argv[])
 
 	mymesh mesh;
 	readCellMesh(inputFileName, mesh);
+	checkquality::printQuality(mesh);
 
 	vcache_optimizer::stdout_callback cb; 
 	optimizer(mesh, "", cb);
 
 	writeCellMesh(outputFileName, mesh);
+	checkquality::printQuality(mesh);
 
 	return 0;
 }
