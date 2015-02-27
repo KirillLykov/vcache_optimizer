@@ -1,8 +1,6 @@
-# (C) Copyright Kirill Lykov 2013.
+# (C) Copyright Kirill Lykov 2015.
 #
 # Distributed under the FreeBSD Software License (See accompanying file license.txt) 
-#
-# Make file for oni2avi. Check include and lib pathes before runing.
 
 SHELL = /bin/sh
 .SUFFIXES: .cpp .u
@@ -14,7 +12,7 @@ EXE =   $(ROOT)
 UNAME := $(shell uname)
 CC = g++
 
-CCFLAGS = -O0 -g -std=c++11
+CCFLAGS = -O3 -g -std=c++11
 LINK = g++
 SRC = opt_dmitry_cell.cpp
 OBJ = opt_dmitry_cell.o
